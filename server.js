@@ -12,7 +12,7 @@ const db = require('./db');
 const app    = express();
 const execAsync = promisify(exec);
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const groq = process.env.GROQ_API_KEY ? new Groq({ apiKey: process.env.GROQ_API_KEY }) : null;
 const MODEL  = 'claude-sonnet-4-5-20250929';
 const PORT   = process.env.PORT || 3000;
 
@@ -90,7 +90,7 @@ async function extractTranscript(url) {
   }
 
   // Fallback: download audio and transcribe via Groq Whisper
-  if (process.env.GROQ_API_KEY) {
+  if (groq) {
     const audioFile = `/tmp/sh_audio_${Date.now()}.mp3`;
     try {
       await execAsync(
