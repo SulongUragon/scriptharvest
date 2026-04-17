@@ -16,6 +16,12 @@ const groq = process.env.GROQ_API_KEY ? new Groq({ apiKey: process.env.GROQ_API_
 const MODEL  = 'claude-sonnet-4-5-20250929';
 const PORT   = process.env.PORT || 3000;
 
+// Debug on startup
+execAsync('which yt-dlp').then(({stdout}) => console.log('yt-dlp path:', stdout.trim())).catch(() => console.log('yt-dlp: NOT FOUND'));
+execAsync('yt-dlp --version').then(({stdout}) => console.log('yt-dlp version:', stdout.trim())).catch(() => console.log('yt-dlp: not executable'));
+console.log('GROQ_API_KEY set:', !!process.env.GROQ_API_KEY);
+console.log('ANTHROPIC_API_KEY set:', !!process.env.ANTHROPIC_API_KEY);
+
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
