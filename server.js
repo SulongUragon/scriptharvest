@@ -1,4 +1,4 @@
-require('dotenv').config({ path: '.env.local' });
+require('dotenv').config({ path: '.env.local' }); // local dev only; Railway uses env vars directly
 const express = require('express');
 const cors    = require('cors');
 const path    = require('path');
