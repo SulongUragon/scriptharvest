@@ -2,14 +2,17 @@ require('dotenv').config({ path: '.env.local' }); // local dev only; Railway use
 const express = require('express');
 const cors    = require('cors');
 const path    = require('path');
+const fs      = require('fs');
 const { exec } = require('child_process');
 const { promisify } = require('util');
 const Anthropic = require('@anthropic-ai/sdk');
+const Groq = require('groq-sdk');
 const db = require('./db');
 
 const app    = express();
 const execAsync = promisify(exec);
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const MODEL  = 'claude-sonnet-4-5-20250929';
 const PORT   = process.env.PORT || 3000;
 
@@ -86,20 +89,30 @@ async function extractTranscript(url) {
     return { title, transcript: parseSRT(transcript), platform };
   }
 
-  // Fallback: use video description
-  try {
-    const { stdout: desc } = await execAsync(
-      `yt-dlp --skip-download --print description "${url}" 2>/dev/null`,
-      { timeout: 20000 }
-    );
-    if (desc.trim()) {
-      return {
-        title,
-        transcript: `[No captions found. Video description:]\n\n${desc.trim()}`,
-        platform,
-      };
+  // Fallback: download audio and transcribe via Groq Whisper
+  if (process.env.GROQ_API_KEY) {
+    const audioFile = `/tmp/sh_audio_${Date.now()}.mp3`;
+    try {
+      await execAsync(
+        `yt-dlp -x --audio-format mp3 --audio-quality 0 -o "${audioFile}" "${url}" 2>&1`,
+        { timeout: 120000 }
+      );
+      if (fs.existsSync(audioFile)) {
+        const transcription = await groq.audio.transcriptions.create({
+          file: fs.createReadStream(audioFile),
+          model: 'whisper-large-v3-turbo',
+          response_format: 'text',
+        });
+        fs.unlinkSync(audioFile);
+        if (transcription && transcription.trim()) {
+          return { title, transcript: transcription.trim(), platform };
+        }
+      }
+    } catch (e) {
+      console.error('Whisper fallback failed:', e.message);
+      try { fs.unlinkSync(audioFile); } catch (_) {}
     }
-  } catch (_) {}
+  }
 
   return {
     title,
